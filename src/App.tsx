@@ -62,7 +62,10 @@ class App extends React.Component<{}, {block: any, url: string, aggregator: Aggr
           </label>
         </p>
         <p className="App-intro">
-          To get started, edit <code>src/App.tsx</code> and save to reload.
+          <div>
+            <label>From Block#</label><input key="fromBlock" />
+            <label>To</label><input key="toBlock" />
+          </div>
         </p>
         <pre style={{textAlign: "left"}}>
           {blk}
