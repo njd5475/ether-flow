@@ -56,7 +56,11 @@ class App extends React.Component<{}, {block: any, url: string, aggregator: Aggr
           <img src={logo} className="App-logo" alt="logo" />
           <h1 className="App-title">Welcome to React</h1>
         </header>
-        <input key="providerUrl" onBlur={providerUrlHandler} type="text" />
+        <p className="App-intro">
+          <label>Provider Url:
+            <input key="providerUrl" onBlur={providerUrlHandler} type="text" />
+          </label>
+        </p>
         <p className="App-intro">
           To get started, edit <code>src/App.tsx</code> and save to reload.
         </p>
