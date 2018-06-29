@@ -27,7 +27,16 @@ class App extends React.Component<{}, {block: any, url: string, aggregator: Aggr
     if (this.state === null || this.state.aggregator === null) { return; }
     this.state.aggregator.totalEther()
     .then((block) => {
+      if (this.state === null || this.state.aggregator === null) { return; }
       const blockStr = JSON.stringify(block, null, 2);
+      if(block.transactions.length > 0) {
+        for(const trn of block.transactions) {
+            this.state.aggregator.getTrans(trn).then((trans)=> {
+              const trnStr = JSON.stringify(trans, null, 2);
+              this.setState({block: trnStr});
+            })
+        }
+      }
       this.setState({block: blockStr});
     }).catch((err) => {
       this.setState({block: "error"});

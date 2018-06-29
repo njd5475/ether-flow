@@ -12,6 +12,10 @@ class Aggregator {
   public totalEther() {
     return this.w3.eth.getBlock(1000000);
   }
+
+  public getTrans(hsh: any) {
+    return this.w3.eth.getTransaction(hsh);
+  }
 }
 
 export { Aggregator }
