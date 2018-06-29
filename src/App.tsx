@@ -15,16 +15,22 @@ class App extends React.Component<{}, {block: any, url: string, aggregator: Aggr
   }
 
   public componentDidMount() {
+    this.refreshBlock();
+  }
+
+  public providerChanged(e: React.SyntheticEvent) {
+    const target = e.currentTarget as HTMLInputElement
+    this.setState({url: target.value, aggregator: new Aggregator(target.value)}, () => {this.refreshBlock()});
+  }
+
+  public refreshBlock() {
     if (this.state === null || this.state.aggregator === null) { return; }
-    this.state.aggregator.totalEther().then((block) => {
+    this.state.aggregator.totalEther()
+    .then((block) => {
       const blockStr = JSON.stringify(block, null, 2);
-      this.setState({
-        block: blockStr
-      });
+      this.setState({block: blockStr});
     }).catch((err) => {
-      this.setState({
-        block: "error"
-      });
+      this.setState({block: "error"});
     });
   }
 
@@ -33,10 +39,7 @@ class App extends React.Component<{}, {block: any, url: string, aggregator: Aggr
     if(this.state != null) {
       blk = this.state.block;
     }
-    let provider = "";
-    if(this.state && this.state.aggregator) {
-      provider = this.state.aggregator.constructor.name;
-    }
+    const providerUrlHandler = this.providerChanged.bind(this);
 
     return (
       <div className="App">
@@ -44,11 +47,9 @@ class App extends React.Component<{}, {block: any, url: string, aggregator: Aggr
           <img src={logo} className="App-logo" alt="logo" />
           <h1 className="App-title">Welcome to React</h1>
         </header>
-        <input type="text" />
+        <input key="providerUrl" onBlur={providerUrlHandler} type="text" />
         <p className="App-intro">
           To get started, edit <code>src/App.tsx</code> and save to reload.
-          <br/>
-          Ether Provider: {provider}
         </p>
         <pre style={{textAlign: "left"}}>
           {blk}
