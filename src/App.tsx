@@ -1,25 +1,39 @@
 import * as React from 'react';
 import './App.css';
 
+import { Col, Grid, Row } from 'react-bootstrap';
+
 import { Aggregator } from './ether/aggregator';
 import logo from './logo.svg';
 
-import * as Web3Types from 'web3/types';
-
 import * as _ from 'underscore';
+import * as W3 from 'web3/eth/types';
+
+import BlockList from './BlockList';
+import SummaryReport from './ether/summaryReport';
+import Summary from './Summary';
 
 interface IAppProps {
     providerUrl?: string
 }
 
+interface IRange {
+  begin: number,
+  end: number
+}
+
 interface IAppState {
   aggregator: Aggregator,
-  block: any,
+  aggregators: Aggregator[],
+  blocks: W3.Block[],
   index: number,
   mainState: string,
+  range: IRange,
+  totalEther: number,
   transactions: any[],
   url: string
 }
+
 
 class App extends React.Component<IAppProps, IAppState> {
   public static defaultProps: Partial<IAppProps> = {
@@ -27,17 +41,24 @@ class App extends React.Component<IAppProps, IAppState> {
   }
   private fromBlock: HTMLInputElement | null
   private toBlock: HTMLInputElement | null
+  private delayedChange: (e: React.SyntheticEvent) => void = this.rangeChanged
+  private report: SummaryReport
 
   public constructor(props: any) {
     super(props);
+    const firstAggregator = new Aggregator(props.providerUrl);
     this.state = {
-      aggregator: new Aggregator(props.providerUrl),
-      block: "initial block state",
+      aggregator: firstAggregator,
+      aggregators: [firstAggregator],
+      blocks: [],
       index: 0,
       mainState: 'created',
+      range: {begin: 1, end: 50},
+      totalEther: 0,
       transactions: [],
       url: props.providerUrl
     };
+    this.report = new SummaryReport();
   }
 
   public componentDidMount() {
@@ -47,30 +68,38 @@ class App extends React.Component<IAppProps, IAppState> {
   public providerChanged(e: React.SyntheticEvent) {
     const target = e.currentTarget as HTMLInputElement
     localStorage.setItem("saved-provider", target.value.toString());
-    this.setState({url: target.value, aggregator: new Aggregator(target.value)}, () => {this.refreshBlock()});
+    this.setState({url: target.value, aggregator: new Aggregator(target.value)}, () => this.refreshBlock());
   }
 
   public refreshBlock() {
     this.setState({mainState: 'pending'})
-    if (this.state === null || this.state.aggregator === null || this.fromBlock === null || this.toBlock === null) { return; }
+    if (this.state === null || this.state.aggregator === null) { return; }
 
-    let fromBlockNum = this.state.aggregator.getLatestBlock()
-    if(this.fromBlock) {
-        fromBlockNum = +this.fromBlock.value;
-    }
-
-    this.state.aggregator.totalEther(fromBlockNum-50, fromBlockNum, (b) => {this.setState({index: b})})
-      .then((block: Web3Types.Block[]) => {
+    this.state.aggregator.totalEther(this.state.range.begin, this.state.range.end, (b) => {this.setState({index: b})})
+      .then((blks: W3.Block[]) => {
         if (this.state === null || this.state.aggregator === null) { return; }
 
-        const blockStr = JSON.stringify(block, null, 2);
-        const allTrans = _.collect(block, (c) => c.transactions);
+        const allTrans = _.collect(blks, (c) => c.transactions);
         const trans = _.flatten(allTrans);
 
-        this.setState({block: blockStr, transactions: trans, mainState: 'loaded'});
+        this.setState({blocks: blks, transactions: trans, mainState: 'loaded'}, () => this.refreshSummary());
       }).catch((err: any) => {
-        this.setState({block: "error", mainState: 'error'});
+        this.setState({mainState: 'error ' + err});
       });
+  }
+
+  public refreshSummary() {
+    if(this.state && this.state.transactions) {
+      this.setState({mainState: 'pending'});
+      _.collect(this.state.transactions, (t) => {
+        if(!this.state) {return;}
+        this.state.aggregator.getTrans(t).then((tr) => {
+          if(!this.state) {return;}
+          this.setState({totalEther: this.state.totalEther + +tr.value});
+          this.report.addTransaction(t);
+        });
+      });
+    }
   }
 
   public getLogoClass(): string {
@@ -83,43 +112,62 @@ class App extends React.Component<IAppProps, IAppState> {
     return cls
   }
 
+  public rangeChanged() {
+    if(this.state && this.state.range && this.fromBlock && this.toBlock) {
+      this.state.aggregator.stop()
+      const newState = {
+        aggregator: new Aggregator(this.state.url),
+        mainState: 'rangeChanged',
+        range: {begin: +this.fromBlock.value, end: +this.toBlock.value}
+      };
+      this.setState(newState, () => this.refreshBlock())
+    }
+  }
+
   public render() {
-    let blk = "no block found";
     let providerUrl = '';
-    let latest = 0;
+    let range = {begin: 0, end: 0};
     let index = 0;
+    let totalEther = 0;
+    let blocks : W3.Block[] = [];
 
     if(this.state != null) {
-      blk = this.state.block;
       providerUrl = this.state.url;
-      latest = this.state.aggregator.getLatestBlock()
-      index = this.state.index
+      range = this.state.range;
+      index = this.state.index;
+      totalEther = this.state.totalEther;
+      blocks = this.state.blocks;
     }
     const providerUrlHandler = this.providerChanged.bind(this);
-    const blockRangeHandler = this.refreshBlock.bind(this);
+    const blockRangeHandler = this.delayedChange.bind(this);
 
     return (
-      <div className="App">
+      <Grid className="App">
         <header className="App-header">
           <img src={logo} className={this.getLogoClass()} alt="logo" />
           <h1 className="App-title">Welcome to EtherFlow a simple blockchain explorer</h1>
         </header>
-        <p className="App-intro">
+        <Row className="App-intro">
           <label>Provider Url:
-            <input key="providerUrl" onBlur={providerUrlHandler} type="text" value={providerUrl}/>
+            <input key="providerUrl" onBlur={providerUrlHandler} type="text" defaultValue={providerUrl}/>
           </label>
-        </p>
-        <p className="App-intro">
+        </Row>
+        <Row className="App-intro">
           <div>
-            <label>From Block#</label><input onChange={blockRangeHandler} ref={(el) => this.fromBlock = el} />
-            <label>To</label><input onChange={blockRangeHandler} ref={(el) => this.toBlock = el} />
-            Loading {index} of {latest}
+            <label>From Block#</label><input name='blockFrom' onChange={blockRangeHandler} ref={(el) => this.fromBlock = el} defaultValue={range.begin.toString()} />
+            <label>To</label><input name='blockTo' onChange={blockRangeHandler} ref={(el) => this.toBlock = el} defaultValue={range.end.toString()} />
           </div>
-        </p>
-        <pre style={{textAlign: "left"}}>
-          {blk}
-        </pre>
-      </div>
+        </Row>
+        <Row>
+          <Col md={12}>
+            Loading {index} of {range.end}
+          </Col>
+        </Row>
+        <Row>
+          <Summary total={totalEther}/>
+        </Row>
+        <BlockList blocks={blocks} />
+      </Grid>
     );
   }
 }

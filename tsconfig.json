@@ -16,7 +16,8 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "suppressImplicitAnyIndexErrors": true,
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "allowSyntheticDefaultImports": true
   },
   "exclude": [
     "node_modules",
@@ -25,8 +26,6 @@
     "acceptance-tests",
     "webpack",
     "jest",
-    "src/setupTests.ts",
-    "./node_modules/web3-typescript-typings/index.d.ts",
-    "./node_modules/types-bn/index.d.ts"
+    "src/setupTests.ts"
   ]
 }
