@@ -1,8 +1,6 @@
-import * as W3 from       'web3/eth/types';
-
-import { Col, Row } from  'react-bootstrap';
-
 import React from         'react';
+import { Col, Row } from  'react-bootstrap';
+import * as W3 from       'web3/eth/types';
 
 export default class BlockSummary extends React.Component<W3.Block, {}> {
 
