@@ -17,15 +17,18 @@ export default class SummaryReport {
   }
 
   public addTransaction(t: W3.Transaction) {
+    this.checkAndAddContractAddress(t);
     this.addSender(t.from, t);
     this.addReceiver(t.to, t);
-    this.checkAndAddContractAddress(t);
   }
 
   private addSender(from: string, t: W3.Transaction) {
     const sent = this.sentAddresses[from] || {};
     sent.amount = sent.amount ? sent.amount.add(new BigNumber(t.value)) : new BigNumber(t.value);
     sent.transactionCount = sent.transactionCount ? sent.transactionCount + 1 : 1;
+    sent.isContractAddress = sent.isContractAddress || this.contractAddresses[from] || false;
+    this.aggregator.toEther(sent.amount.toString()).then((e) => sent.displayAmountEther = e.toFixed(18).toString());
+    this.aggregator.toDollars(sent.amount.toString()).then((e) => sent.displayAmountDollars = e.toFixed(2).toString());
     this.sentAddresses[from] = sent;
   }
 
@@ -33,16 +36,27 @@ export default class SummaryReport {
     const received = this.receivedAddresses[to] || {};
     received.amount = received.amount ? received.amount.add(new BigNumber(t.value)) : new BigNumber(t.value);
     received.transactionCount = received.transactionCount ? received.transactionCount + 1 : 1;
+    received.isContractAddress = received.isContractAddress || this.contractAddresses[to] || false;
+    this.aggregator.toEther(received.amount.toString()).then((e) => received.displayAmountEther = e.toFixed(18).toString());
+    this.aggregator.toDollars(received.amount.toString()).then((e) => received.displayAmountDollars = e.toFixed(2).toString());
     this.receivedAddresses[to] = received;
   }
 
   private checkAndAddContractAddress(t: W3.Transaction) {
     this.aggregator.isContract(t.to).then((c) => {
       if("0x0" !== c) {
-        const addr = this.contractAddresses[t.to] = this.contractAddresses[t.to] || {};
-        addr.contractCount = addr.contractCount ? addr.contractCount + 1 : 0;
+        this.addContractAddress(t.to);
       }
     })
-    this.aggregator.isContract(t.from)
+    this.aggregator.isContract(t.from).then((c) => {
+      if("0x0" !== c) {
+        this.addContractAddress(t.from)
+      }
+    })
+  }
+
+  private addContractAddress(hsh: string) {
+    const addr = this.contractAddresses[hsh] = this.contractAddresses[hsh] || {};
+    addr.contractCount = addr.contractCount ? addr.contractCount + 1 : 0;
   }
 }

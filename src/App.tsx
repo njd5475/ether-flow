@@ -31,6 +31,7 @@ interface IAppState {
   index: number,
   mainState: string,
   range: IRange,
+  report: SummaryReport,
   totalEther: BigNumber,
   transactions: any[],
   url: string
@@ -38,24 +39,26 @@ interface IAppState {
 
 
 class App extends React.Component<IAppProps, IAppState> {
+  public static defaulProviderUrl = 'http://localhost:4535'
   public static defaultProps: Partial<IAppProps> = {
-    providerUrl: 'http://localhost:4535'
+    providerUrl: App.defaulProviderUrl
   }
+  public static defaultAggregator = new Aggregator(App.defaulProviderUrl);
   public state = {
-    aggregator: new Aggregator('http://localhost:4535'),
+    aggregator: App.defaultAggregator,
     aggregators: [],
     blocks: [],
     index: 0,
     mainState: 'created',
     range: {begin: 1, end: 50},
+    report: new SummaryReport(App.defaultAggregator),
     totalEther: new BigNumber(0),
     transactions: [],
-    url: 'http://localhost:4535'
+    url: App.defaulProviderUrl
   }
   private fromBlock: HTMLInputElement | null
   private toBlock: HTMLInputElement | null
-  private delayedChange: (e: React.SyntheticEvent) => void = this.rangeChanged
-  private report: SummaryReport
+  private delayedChange: (e: React.SyntheticEvent) => void = _.debounce(this.rangeChanged, 500)
 
   public constructor(props: any) {
     super(props);
@@ -64,7 +67,7 @@ class App extends React.Component<IAppProps, IAppState> {
     if(this.props.providerUrl) {
       this.state.url = this.props.providerUrl;
     }
-    this.report = new SummaryReport(firstAggregator);
+    this.state.report = new SummaryReport(firstAggregator);
   }
 
   public componentDidMount() {
@@ -98,13 +101,11 @@ class App extends React.Component<IAppProps, IAppState> {
 
   public refreshSummary() {
     this.setState({mainState: 'pending'}, () => {
-      if(this.state && this.state.transactions && this.state.transactions.length > 0) {
+      if(this.state.transactions.length > 0) {
         _.collect(this.state.transactions, (t) => {
-          if(!this.state) {return;}
           this.state.aggregator.getTrans(t).then((tr) => {
-            if(!this.state) {return;}
-            this.setState({totalEther: this.state.totalEther.add(new BigNumber(tr.value)), mainState: 'loaded'});
-            this.report.addTransaction(tr);
+            this.state.report.addTransaction(tr);
+            this.setState({report: this.state.report, totalEther: this.state.totalEther.add(new BigNumber(tr.value)), mainState: 'loaded'});
           }).catch(() => {
             this.setState({mainState: 'failed'});
           });
@@ -117,10 +118,8 @@ class App extends React.Component<IAppProps, IAppState> {
 
   public getLogoClass(): string {
     let cls = 'App-logo';
-    if(this.state) {
-      if(this.state.mainState !== 'pending') {
-        cls = 'App-logo-still';
-      }
+    if(this.state.mainState !== 'pending') {
+      cls = 'App-logo-still';
     }
     return cls
   }
@@ -137,11 +136,10 @@ class App extends React.Component<IAppProps, IAppState> {
   }
 
   public skip(amount: number) {
-    if(!this.state) {return;}
     const rng = this.state.range;
     this.setState({range: {begin: rng.begin+amount, end: rng.end+amount}},
       () => {
-        if(!this.state || !this.toBlock || !this.fromBlock) {return;}
+        if(!this.toBlock || !this.fromBlock) {return;}
         this.toBlock.value = this.state.range.end.toString();
         this.fromBlock.value = this.state.range.begin.toString();
         this.refreshBlock();
@@ -150,28 +148,19 @@ class App extends React.Component<IAppProps, IAppState> {
   }
 
   public render() {
-    let providerUrl = '';
-    let range = {begin: 0, end: 0};
-    let index = 0;
-    let blocks : W3.Block[] = [];
-    let aggregator = null;
-    let transactions = 0;
-    const rangeLinks = _.times(5,
+    const range = this.state.range;
+    const index = this.state.index;
+    const blocks = this.state.blocks;
+    const aggregator = this.state.aggregator;
+    const transactions =  this.state.transactions.length;
+    const rangeLinks = _.times(6,
       (n) => {
-        const skipFunc = () => this.skip(Math.pow(10,n));
+        const skipFunc = _.debounce(() => this.skip(Math.pow(10,n)), 100);
         return <span key={n}>
           <a href="#" onClick={skipFunc}>Skip {Math.pow(10, n)}</a>&nbsp;|&nbsp;
         </span>
       });
 
-    if(this.state != null) {
-      providerUrl = this.state.url;
-      range = this.state.range;
-      index = this.state.index;
-      blocks = this.state.blocks;
-      aggregator = this.state.aggregator;
-      transactions = this.state.transactions.length;
-    }
     const providerUrlHandler = this.providerChanged.bind(this);
     const blockRangeHandler = this.delayedChange.bind(this);
 
@@ -184,7 +173,7 @@ class App extends React.Component<IAppProps, IAppState> {
         <Grid>
           <Row className="App-intro">
             <label>Provider Url:
-              <input key="providerUrl" onBlur={providerUrlHandler} type="text" defaultValue={providerUrl}/>
+              <input key="providerUrl" onBlur={providerUrlHandler} type="text" defaultValue={this.state.url}/>
             </label>
           </Row>
           <Row className="App-intro">
@@ -198,7 +187,7 @@ class App extends React.Component<IAppProps, IAppState> {
           </Row>
           <Row className="pull-right">
             <Col md={12}>
-              Loading {index} of {range.end} ({transactions} transactions) ({this.state.mainState})
+              Loading {index} of {range.end} ({Math.floor(((index-range.begin) / (range.end-range.begin)) * 100)}%) ({transactions} transactions) ({this.state.mainState})
             </Col>
           </Row>
           <Row>
@@ -206,13 +195,13 @@ class App extends React.Component<IAppProps, IAppState> {
               <Tab eventKey={1} title="Blocks">
                 <BlockList blocks={blocks} />
               </Tab>
-              <Tab eventKey={2} title="Senders">
-                <TransferList transfers={this.report.sentAddresses} />
+              <Tab eventKey={2} title={`Senders (${Object.keys(this.state.report.sentAddresses).length})`}>
+                <TransferList transfers={this.state.report.sentAddresses} />
               </Tab>
-              <Tab eventKey={3} title="Receivers">
-                <TransferList transfers={this.report.receivedAddresses} />
+              <Tab eventKey={3} title={`Receivers (${Object.keys(this.state.report.receivedAddresses).length})`}>
+                <TransferList transfers={this.state.report.receivedAddresses} />
               </Tab>
-              <Tab eventKey={4} title="Transaction Details">
+              <Tab eventKey={4} title="Transaction Summary">
                 <Row>
                   <Summary total={this.state.totalEther} aggregator={aggregator}/>
                 </Row>
@@ -227,7 +216,7 @@ class App extends React.Component<IAppProps, IAppState> {
   private createNewAggregator(url: string): Aggregator {
     this.state.aggregator.stop();
     const newAggregator = new Aggregator(url);
-    this.report = new SummaryReport(newAggregator);
+    this.setState({report: new SummaryReport(newAggregator), url, totalEther: new BigNumber(0)});
     return newAggregator;
   }
 }
