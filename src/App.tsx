@@ -13,6 +13,7 @@ import * as W3 from 'web3/eth/types';
 import BlockList from './BlockList';
 import SummaryReport from './ether/summaryReport';
 import Summary from './Summary';
+import TransferList from './TransferList';
 
 interface IAppProps {
     providerUrl?: string
@@ -63,7 +64,7 @@ class App extends React.Component<IAppProps, IAppState> {
     if(this.props.providerUrl) {
       this.state.url = this.props.providerUrl;
     }
-    this.report = new SummaryReport();
+    this.report = new SummaryReport(firstAggregator);
   }
 
   public componentDidMount() {
@@ -73,10 +74,8 @@ class App extends React.Component<IAppProps, IAppState> {
   public providerChanged(e: React.SyntheticEvent) {
     const target = e.currentTarget as HTMLInputElement
     localStorage.setItem("saved-provider", target.value.toString());
-    if(this.state) {
-      this.state.aggregator.stop();
-    }
-    this.setState({url: target.value, aggregator: new Aggregator(target.value)}, () => this.refreshBlock());
+    const newAggregator = this.createNewAggregator(target.value);
+    this.setState({url: target.value, aggregator: newAggregator}, () => this.refreshBlock());
   }
 
   public refreshBlock() {
@@ -105,7 +104,7 @@ class App extends React.Component<IAppProps, IAppState> {
           this.state.aggregator.getTrans(t).then((tr) => {
             if(!this.state) {return;}
             this.setState({totalEther: this.state.totalEther.add(new BigNumber(tr.value)), mainState: 'loaded'});
-            this.report.addTransaction(t);
+            this.report.addTransaction(tr);
           }).catch(() => {
             this.setState({mainState: 'failed'});
           });
@@ -127,10 +126,9 @@ class App extends React.Component<IAppProps, IAppState> {
   }
 
   public rangeChanged() {
-    if(this.state && this.state.range && this.fromBlock && this.toBlock) {
-      this.state.aggregator.stop()
+    if(this.fromBlock && this.toBlock) {
       const newState = {
-        aggregator: new Aggregator(this.state.url),
+        aggregator: this.createNewAggregator(this.state.url),
         mainState: 'rangeChanged',
         range: {begin: +this.fromBlock.value, end: +this.toBlock.value}
       };
@@ -178,42 +176,59 @@ class App extends React.Component<IAppProps, IAppState> {
     const blockRangeHandler = this.delayedChange.bind(this);
 
     return (
-      <Grid>
-        <header className="App-header">
+      <div>
+        <header className="App-header" html-role="banner">
           <img src={logo} className={this.getLogoClass()} alt="logo" />
           <h1 className="App-title">Welcome to EtherFlow a simple blockchain explorer</h1>
         </header>
-        <Row className="App-intro">
-          <label>Provider Url:
-            <input key="providerUrl" onBlur={providerUrlHandler} type="text" defaultValue={providerUrl}/>
-          </label>
-        </Row>
-        <Row className="App-intro">
-          <div>
-            <label>From Block#</label><input name='blockFrom' onChange={blockRangeHandler} ref={(el) => this.fromBlock = el} defaultValue={range.begin.toString()} />
-            <label>To</label><input name='blockTo' onChange={blockRangeHandler} ref={(el) => this.toBlock = el} defaultValue={range.end.toString()} />
-          </div>
-        </Row>
-        <Row>
-          {rangeLinks}
-        </Row>
-        <Row className="pull-right">
-          <Col md={12}>
-            Loading {index} of {range.end} ({transactions} transactions) ({this.state.mainState})
-          </Col>
-        </Row>
-        <Tabs>
-          <Tab eventKey={1} title="Blocks">
-            <BlockList blocks={blocks} />
-          </Tab>
-          <Tab eventKey={2} title="Transaction Details">
-            <Row>
-              <Summary total={this.state.totalEther} aggregator={aggregator}/>
-            </Row>
-          </Tab>
-        </Tabs>
-      </Grid>
+        <Grid>
+          <Row className="App-intro">
+            <label>Provider Url:
+              <input key="providerUrl" onBlur={providerUrlHandler} type="text" defaultValue={providerUrl}/>
+            </label>
+          </Row>
+          <Row className="App-intro">
+            <div>
+              <label>From Block#</label><input name='blockFrom' onChange={blockRangeHandler} ref={(el) => this.fromBlock = el} defaultValue={range.begin.toString()} />
+              <label>To</label><input name='blockTo' onChange={blockRangeHandler} ref={(el) => this.toBlock = el} defaultValue={range.end.toString()} />
+            </div>
+          </Row>
+          <Row>
+            {rangeLinks}
+          </Row>
+          <Row className="pull-right">
+            <Col md={12}>
+              Loading {index} of {range.end} ({transactions} transactions) ({this.state.mainState})
+            </Col>
+          </Row>
+          <Row>
+            <Tabs>
+              <Tab eventKey={1} title="Blocks">
+                <BlockList blocks={blocks} />
+              </Tab>
+              <Tab eventKey={2} title="Senders">
+                <TransferList transfers={this.report.sentAddresses} />
+              </Tab>
+              <Tab eventKey={3} title="Receivers">
+                <TransferList transfers={this.report.receivedAddresses} />
+              </Tab>
+              <Tab eventKey={4} title="Transaction Details">
+                <Row>
+                  <Summary total={this.state.totalEther} aggregator={aggregator}/>
+                </Row>
+              </Tab>
+            </Tabs>
+          </Row>
+        </Grid>
+      </div>
     );
+  }
+
+  private createNewAggregator(url: string): Aggregator {
+    this.state.aggregator.stop();
+    const newAggregator = new Aggregator(url);
+    this.report = new SummaryReport(newAggregator);
+    return newAggregator;
   }
 }
 

@@ -69,6 +69,10 @@ export default class Aggregator {
   public getTrans(hsh: any) {
     return this.w3.eth.getTransaction(hsh);
   }
+
+  public isContract(hsh: string) {
+    return this.w3.eth.getCode(hsh);
+  }
 }
 
 export { Aggregator }
