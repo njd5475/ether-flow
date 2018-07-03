@@ -8,7 +8,7 @@ export default class SummaryReport {
   public contractAddresses: object = {}
   public receivedAddresses: T.Transfers = {}
   public sentAddresses: T.Transfers = {}
-  public totalEther: number = 0
+  public totalEther: BigNumber = new BigNumber(0)
 
   private aggregator: Aggregator
 
@@ -16,10 +16,13 @@ export default class SummaryReport {
     this.aggregator = aggregator;
   }
 
-  public addTransaction(t: W3.Transaction) {
-    this.checkAndAddContractAddress(t);
-    this.addSender(t.from, t);
-    this.addReceiver(t.to, t);
+  public addTransaction(t: W3.Transaction): Promise<SummaryReport> {
+    return new Promise<SummaryReport>((resolve, reject) => {
+      this.totalEther = this.totalEther.add(new BigNumber(t.value));
+      this.checkAndAddContractAddress(t, resolve, reject);
+      this.addSender(t.from, t);
+      this.addReceiver(t.to, t);
+    })
   }
 
   private addSender(from: string, t: W3.Transaction) {
@@ -42,17 +45,19 @@ export default class SummaryReport {
     this.receivedAddresses[to] = received;
   }
 
-  private checkAndAddContractAddress(t: W3.Transaction) {
+  private checkAndAddContractAddress(t: W3.Transaction, resolve: (s: SummaryReport) => void, reject: () => void) {
     this.aggregator.isContract(t.to).then((c) => {
       if("0x0" !== c) {
         this.addContractAddress(t.to);
       }
+      this.aggregator.isContract(t.from).then((ct) => {
+        if("0x0" !== ct) {
+          this.addContractAddress(t.from)
+        }
+        resolve(this);
+      })
     })
-    this.aggregator.isContract(t.from).then((c) => {
-      if("0x0" !== c) {
-        this.addContractAddress(t.from)
-      }
-    })
+
   }
 
   private addContractAddress(hsh: string) {

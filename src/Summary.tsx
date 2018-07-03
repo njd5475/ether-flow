@@ -7,32 +7,25 @@ interface ISummaryState {
   ether: number
 }
 
-export default class Summary extends React.Component<{total: BigNumber, aggregator: Aggregator | null}, ISummaryState> {
+export default class Summary extends React.Component<{total: BigNumber, aggregator: Aggregator}, ISummaryState> {
   public state = {
     dollars: 0,
     ether: 0
   }
 
   public componentWillReceiveProps(nextProps: any) {
-    if(!this.state) {return;}
-
-    if(nextProps.total !== this.props.total && this.props.aggregator) {
-      this.props.aggregator.toDollars(this.props.total.toString()).then((d) => {
-        this.setState({dollars: d});
-      })
-      this.props.aggregator.toEther(this.props.total.toString()).then((e) => {
-        this.setState({ether: e});
+    if(nextProps.total !== this.props.total) {
+      this.props.aggregator.toDollars(nextProps.total.toString()).then((d) => {
+        this.props.aggregator.toEther(nextProps.total.toString()).then((e) => {
+          this.setState({dollars: d, ether: e});
+        });
       })
     }
   }
 
   public render() {
-    let dollars = "$0";
-    let ether = "0";
-    if(this.state) {
-      dollars = this.state.dollars.toString();
-      ether = this.state.ether.toString();
-    }
+    const dollars = this.state.dollars.toString();
+    const ether = this.state.ether.toString() + "ETH";
 
     return (
       <div><h3>Summary</h3>

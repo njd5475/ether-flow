@@ -1,4 +1,3 @@
-import BigNumber from 'bn.js'
 import * as React from 'react';
 import './App.css';
 
@@ -32,7 +31,6 @@ interface IAppState {
   mainState: string,
   range: IRange,
   report: SummaryReport,
-  totalEther: BigNumber,
   transactions: any[],
   url: string
 }
@@ -52,7 +50,6 @@ class App extends React.Component<IAppProps, IAppState> {
     mainState: 'created',
     range: {begin: 1, end: 50},
     report: new SummaryReport(App.defaultAggregator),
-    totalEther: new BigNumber(0),
     transactions: [],
     url: App.defaulProviderUrl
   }
@@ -104,8 +101,9 @@ class App extends React.Component<IAppProps, IAppState> {
       if(this.state.transactions.length > 0) {
         _.collect(this.state.transactions, (t) => {
           this.state.aggregator.getTrans(t).then((tr) => {
-            this.state.report.addTransaction(tr);
-            this.setState({report: this.state.report, totalEther: this.state.totalEther.add(new BigNumber(tr.value)), mainState: 'loaded'});
+            this.state.report.addTransaction(tr).then((report) => {
+              this.setState({report, mainState: 'loaded'});
+            })
           }).catch(() => {
             this.setState({mainState: 'failed'});
           });
@@ -203,7 +201,7 @@ class App extends React.Component<IAppProps, IAppState> {
               </Tab>
               <Tab eventKey={4} title="Transaction Summary">
                 <Row>
-                  <Summary total={this.state.totalEther} aggregator={aggregator}/>
+                  <Summary total={this.state.report.totalEther} aggregator={aggregator}/>
                 </Row>
               </Tab>
             </Tabs>
@@ -216,7 +214,7 @@ class App extends React.Component<IAppProps, IAppState> {
   private createNewAggregator(url: string): Aggregator {
     this.state.aggregator.stop();
     const newAggregator = new Aggregator(url);
-    this.setState({report: new SummaryReport(newAggregator), url, totalEther: new BigNumber(0)});
+    this.setState({report: new SummaryReport(newAggregator), url});
     return newAggregator;
   }
 }
