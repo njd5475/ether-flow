@@ -1,7 +1,8 @@
+import BigNumber from 'bn.js'
 import * as React from 'react';
 import './App.css';
 
-import { Col, Grid, Row } from 'react-bootstrap';
+import { Col, Grid, Row, Tab, Tabs } from 'react-bootstrap';
 
 import { Aggregator } from './ether/aggregator';
 import logo from './logo.svg';
@@ -29,7 +30,7 @@ interface IAppState {
   index: number,
   mainState: string,
   range: IRange,
-  totalEther: number,
+  totalEther: BigNumber,
   transactions: any[],
   url: string
 }
@@ -39,6 +40,17 @@ class App extends React.Component<IAppProps, IAppState> {
   public static defaultProps: Partial<IAppProps> = {
     providerUrl: 'http://localhost:4535'
   }
+  public state = {
+    aggregator: new Aggregator('http://localhost:4535'),
+    aggregators: [],
+    blocks: [],
+    index: 0,
+    mainState: 'created',
+    range: {begin: 1, end: 50},
+    totalEther: new BigNumber(0),
+    transactions: [],
+    url: 'http://localhost:4535'
+  }
   private fromBlock: HTMLInputElement | null
   private toBlock: HTMLInputElement | null
   private delayedChange: (e: React.SyntheticEvent) => void = this.rangeChanged
@@ -47,17 +59,10 @@ class App extends React.Component<IAppProps, IAppState> {
   public constructor(props: any) {
     super(props);
     const firstAggregator = new Aggregator(props.providerUrl);
-    this.state = {
-      aggregator: firstAggregator,
-      aggregators: [firstAggregator],
-      blocks: [],
-      index: 0,
-      mainState: 'created',
-      range: {begin: 1, end: 50},
-      totalEther: 0,
-      transactions: [],
-      url: props.providerUrl
-    };
+    this.state.aggregator = firstAggregator;
+    if(this.props.providerUrl) {
+      this.state.url = this.props.providerUrl;
+    }
     this.report = new SummaryReport();
   }
 
@@ -68,6 +73,9 @@ class App extends React.Component<IAppProps, IAppState> {
   public providerChanged(e: React.SyntheticEvent) {
     const target = e.currentTarget as HTMLInputElement
     localStorage.setItem("saved-provider", target.value.toString());
+    if(this.state) {
+      this.state.aggregator.stop();
+    }
     this.setState({url: target.value, aggregator: new Aggregator(target.value)}, () => this.refreshBlock());
   }
 
@@ -91,15 +99,19 @@ class App extends React.Component<IAppProps, IAppState> {
 
   public refreshSummary() {
     this.setState({mainState: 'pending'}, () => {
-      if(this.state && this.state.transactions) {
+      if(this.state && this.state.transactions && this.state.transactions.length > 0) {
         _.collect(this.state.transactions, (t) => {
           if(!this.state) {return;}
           this.state.aggregator.getTrans(t).then((tr) => {
             if(!this.state) {return;}
-            this.setState({totalEther: this.state.totalEther + +tr.value, mainState: 'loaded'});
+            this.setState({totalEther: this.state.totalEther.add(new BigNumber(tr.value)), mainState: 'loaded'});
             this.report.addTransaction(t);
+          }).catch(() => {
+            this.setState({mainState: 'failed'});
           });
         });
+      }else{
+        this.setState({mainState: 'no transactions'});
       }
     });
   }
@@ -143,10 +155,9 @@ class App extends React.Component<IAppProps, IAppState> {
     let providerUrl = '';
     let range = {begin: 0, end: 0};
     let index = 0;
-    let totalEther = 0;
     let blocks : W3.Block[] = [];
-    let stateStr = 'no state';
     let aggregator = null;
+    let transactions = 0;
     const rangeLinks = _.times(5,
       (n) => {
         const skipFunc = () => this.skip(Math.pow(10,n));
@@ -159,10 +170,9 @@ class App extends React.Component<IAppProps, IAppState> {
       providerUrl = this.state.url;
       range = this.state.range;
       index = this.state.index;
-      totalEther = this.state.totalEther;
       blocks = this.state.blocks;
-      stateStr = this.state.mainState;
       aggregator = this.state.aggregator;
+      transactions = this.state.transactions.length;
     }
     const providerUrlHandler = this.providerChanged.bind(this);
     const blockRangeHandler = this.delayedChange.bind(this);
@@ -187,20 +197,21 @@ class App extends React.Component<IAppProps, IAppState> {
         <Row>
           {rangeLinks}
         </Row>
-        <Row>
+        <Row className="pull-right">
           <Col md={12}>
-            Loading {index} of {range.end}
+            Loading {index} of {range.end} ({transactions} transactions) ({this.state.mainState})
           </Col>
         </Row>
-        <Row>
-          <Col md={12}>
-            {stateStr}
-          </Col>
-        </Row>
-        <Row>
-          <Summary total={totalEther} aggregator={aggregator}/>
-        </Row>
-        <BlockList blocks={blocks} />
+        <Tabs>
+          <Tab eventKey={1} title="Blocks">
+            <BlockList blocks={blocks} />
+          </Tab>
+          <Tab eventKey={2} title="Transaction Details">
+            <Row>
+              <Summary total={this.state.totalEther} aggregator={aggregator}/>
+            </Row>
+          </Tab>
+        </Tabs>
       </Grid>
     );
   }

@@ -32,7 +32,7 @@ export default class Aggregator {
       this.w3.eth.getBlock(begin).then((blk) => {
         blocks.push(blk);
         callback(begin);
-        if(begin <= end) {
+        if(this.runnable && begin <= end) {
           this.nextBlock(begin+1, end, blocks, resolve, callback);
         }else{
           this.stop();
@@ -46,10 +46,16 @@ export default class Aggregator {
 
   public toDollars(wei: string): Promise<number> {
     return new Promise<number>((resolve, reject) => {
-      this.price.get().then((price) => {
-        return price * +this.w3.utils.fromWei(wei, "ether");
-      });
+      this.toEther(wei).then((ether) => {
+        this.price.get().then((price) => resolve(price * ether));
+      })
     })
+  }
+
+  public toEther(wei: string): Promise<number> {
+    return new Promise<number>(
+      (resolve, reject) => resolve(+this.w3.utils.fromWei(wei, "ether"))
+    );
   }
 
   public stop() {
