@@ -11,7 +11,7 @@ export default class BlockList extends React.Component<{blocks: W3.Block[]}, {}>
       <Row>
         <Col md={12}>
           <Grid>
-            {_.collect(this.props.blocks, (b) => <BlockSummary {...b} />)}
+            {_.collect(this.props.blocks, (b) => <BlockSummary key={b.number} {...b} />)}
           </Grid>
         </Col>
       </Row>

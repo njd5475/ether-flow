@@ -1,17 +1,20 @@
 import Web3 from 'web3'
 import * as Eth from 'web3/eth/types';
+import PriceLookup from './priceLookup';
 
-class Aggregator {
+export default class Aggregator {
   public provider: string;
   private w3: Web3;
   private latest: number;
   private runnable: boolean;
+  private price: PriceLookup;
 
   constructor(url: string) {
     this.w3 = new Web3(Web3.givenProvider || new Web3.providers.HttpProvider(url));
     this.provider = this.w3.currentProvider.constructor.name;
     this.latest = 1;
     this.runnable = true;
+    this.price = new PriceLookup();
     const blockP = this.w3.eth.getBlock('latest')
     blockP.then((b) => this.latest = +b.number)
   }
@@ -39,6 +42,14 @@ class Aggregator {
     }else{
       resolve(blocks);
     }
+  }
+
+  public toDollars(wei: string): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      this.price.get().then((price) => {
+        return price * +this.w3.utils.fromWei(wei, "ether");
+      });
+    })
   }
 
   public stop() {

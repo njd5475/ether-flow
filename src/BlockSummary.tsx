@@ -8,7 +8,8 @@ export default class BlockSummary extends React.Component<W3.Block, {}> {
     return (
       <Row>
         <Col md={12}>
-          Hash: {this.props.hash}
+          Hash: {this.props.hash}<br />
+          Block Number: {this.props.number}<br />
         </Col>
       </Row>
     )

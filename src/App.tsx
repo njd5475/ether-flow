@@ -146,7 +146,14 @@ class App extends React.Component<IAppProps, IAppState> {
     let totalEther = 0;
     let blocks : W3.Block[] = [];
     let stateStr = 'no state';
-    const skip100 = () => this.skip(100);
+    let aggregator = null;
+    const rangeLinks = _.times(5,
+      (n) => {
+        const skipFunc = () => this.skip(Math.pow(10,n));
+        return <span key={n}>
+          <a href="#" onClick={skipFunc}>Skip {Math.pow(10, n)}</a>&nbsp;|&nbsp;
+        </span>
+      });
 
     if(this.state != null) {
       providerUrl = this.state.url;
@@ -155,6 +162,7 @@ class App extends React.Component<IAppProps, IAppState> {
       totalEther = this.state.totalEther;
       blocks = this.state.blocks;
       stateStr = this.state.mainState;
+      aggregator = this.state.aggregator;
     }
     const providerUrlHandler = this.providerChanged.bind(this);
     const blockRangeHandler = this.delayedChange.bind(this);
@@ -174,8 +182,10 @@ class App extends React.Component<IAppProps, IAppState> {
           <div>
             <label>From Block#</label><input name='blockFrom' onChange={blockRangeHandler} ref={(el) => this.fromBlock = el} defaultValue={range.begin.toString()} />
             <label>To</label><input name='blockTo' onChange={blockRangeHandler} ref={(el) => this.toBlock = el} defaultValue={range.end.toString()} />
-            <a href="#" onClick={skip100}>Skip 100</a>
           </div>
+        </Row>
+        <Row>
+          {rangeLinks}
         </Row>
         <Row>
           <Col md={12}>
@@ -188,7 +198,7 @@ class App extends React.Component<IAppProps, IAppState> {
           </Col>
         </Row>
         <Row>
-          <Summary total={totalEther}/>
+          <Summary total={totalEther} aggregator={aggregator}/>
         </Row>
         <BlockList blocks={blocks} />
       </Grid>
