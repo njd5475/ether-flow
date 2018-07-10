@@ -118,11 +118,7 @@ class App extends React.Component<IAppProps, IAppState> {
 
   public skip(amount: number) {
     const rng = this.state.range;
-    this.setState({range: {begin: rng.begin+amount, end: rng.end+amount}},
-      () => {
-        this.refreshBlock();
-      }
-    );
+    this.rangeChanged(rng.begin+amount, rng.end+amount);
   }
 
   public rangeChanged(begin: number, end: number) {
@@ -181,7 +177,7 @@ class App extends React.Component<IAppProps, IAppState> {
               </Tab>
               <Tab eventKey={4} title="Transaction Summary">
                 <Row>
-                  <Summary total={this.state.report.totalEther} aggregator={aggregator}/>
+                  <Summary total={this.state.report.totalEther} blocks={this.state.blocks} aggregator={aggregator} report={this.state.report}/>
                 </Row>
               </Tab>
             </Tabs>

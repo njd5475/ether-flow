@@ -9,6 +9,7 @@ export default class BlockSummary extends React.Component<W3.Block, {}> {
         <td>{this.props.hash}</td>
         <td>{this.props.number}</td>
         <td>{this.props.transactions.length}</td>
+        <td>{this.props.uncles.length}</td>
       </tr>
     )
   }

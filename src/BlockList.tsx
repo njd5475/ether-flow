@@ -14,6 +14,7 @@ export default class BlockList extends React.Component<{blocks: W3.Block[]}, {}>
             <th>Block Hash</th>
             <th>Number</th>
             <th>Transaction Count</th>
+            <th>Uncles</th>
           </tr>
         </thead>
         <tbody>

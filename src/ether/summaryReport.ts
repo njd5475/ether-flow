@@ -9,6 +9,7 @@ export default class SummaryReport {
   public receivedAddresses: T.Transfers = {}
   public sentAddresses: T.Transfers = {}
   public totalEther: BigNumber = new BigNumber(0)
+  public allAddresses: object = {}
 
   private aggregator: Aggregator
 
@@ -22,7 +23,13 @@ export default class SummaryReport {
       this.checkAndAddContractAddress(t, resolve, reject);
       this.addSender(t.from, t);
       this.addReceiver(t.to, t);
+      this.allAddresses[t.from] = {};
+      this.allAddresses[t.to] = {};
     })
+  }
+
+  public getContractPercentage(): number {
+    return 100.0 * (Object.keys(this.contractAddresses).length / Object.keys(this.allAddresses).length);
   }
 
   private addSender(from: string, t: W3.Transaction) {
@@ -47,11 +54,11 @@ export default class SummaryReport {
 
   private checkAndAddContractAddress(t: W3.Transaction, resolve: (s: SummaryReport) => void, reject: () => void) {
     this.aggregator.isContract(t.to).then((c) => {
-      if("0x0" !== c) {
+      if(!("0x0" === c || "0x" === c)) {
         this.addContractAddress(t.to);
       }
       this.aggregator.isContract(t.from).then((ct) => {
-        if("0x0" !== ct) {
+        if(!("0x0" === ct || "0x" === ct)) {
           this.addContractAddress(t.from)
         }
         resolve(this);
