@@ -1,0 +1,14 @@
+.App-logo {
+  animation: App-logo-spin infinite 20s linear;
+}
+
+.App-logo-still, .App-logo {
+  height: 100%;
+  vertical-align: middle;
+  display: inline-block !important;
+}
+
+@keyframes App-logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

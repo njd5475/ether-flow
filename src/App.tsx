@@ -4,15 +4,16 @@ import './App.css';
 import { Col, Grid, Row, Tab, Tabs } from 'react-bootstrap';
 
 import { Aggregator } from './ether/aggregator';
-import logo from './logo.svg';
+
 
 import * as _ from 'underscore';
 import * as W3 from 'web3/eth/types';
 
-import BlockList from './BlockList';
+import BlockList     from './BlockList';
 import SummaryReport from './ether/summaryReport';
-import Summary from './Summary';
-import TransferList from './TransferList';
+import FlowNavbar    from './FlowNavbar';
+import Summary       from './Summary';
+import TransferList  from './TransferList';
 
 interface IAppProps {
     providerUrl?: string
@@ -114,12 +115,8 @@ class App extends React.Component<IAppProps, IAppState> {
     });
   }
 
-  public getLogoClass(): string {
-    let cls = 'App-logo';
-    if(this.state.mainState !== 'pending') {
-      cls = 'App-logo-still';
-    }
-    return cls
+  public isBusy(): boolean {
+    return this.state.mainState === 'pending';
   }
 
   public rangeChanged() {
@@ -145,6 +142,13 @@ class App extends React.Component<IAppProps, IAppState> {
     );
   }
 
+  public beginChanged(begin: number) {
+    if(this.fromBlock) {
+      this.fromBlock.value = begin.toString()
+    }
+    this.setState({range: {begin, end: this.state.range.end}});
+  }
+
   public render() {
     const range = this.state.range;
     const index = this.state.index;
@@ -161,13 +165,11 @@ class App extends React.Component<IAppProps, IAppState> {
 
     const providerUrlHandler = this.providerChanged.bind(this);
     const blockRangeHandler = this.delayedChange.bind(this);
+    const beginChangeHandler = this.beginChanged.bind(this);
 
     return (
-      <div>
-        <header className="App-header" html-role="banner">
-          <img src={logo} className={this.getLogoClass()} alt="logo" />
-          <h1 className="App-title">Welcome to EtherFlow a simple blockchain explorer</h1>
-        </header>
+      <body>
+        <FlowNavbar isBusy={this.isBusy()} begin={this.state.range.begin} end={this.state.range.end} beginChanged={beginChangeHandler} />
         <Grid>
           <Row className="App-intro">
             <label>Provider Url:
@@ -207,7 +209,7 @@ class App extends React.Component<IAppProps, IAppState> {
             </Tabs>
           </Row>
         </Grid>
-      </div>
+      </body>
     );
   }
 
