@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ControlLabel, FormControl, FormGroup, Navbar } from 'react-bootstrap';
+import { FormControl, FormGroup, InputGroup, Navbar } from 'react-bootstrap';
 
 interface IRangeProps {
   begin?: number,
@@ -46,20 +46,23 @@ export default class Range extends React.Component<IRangeProps, IRangeState> {
     const changeNumShown = this.changeShown.bind(this);
 
     return (
-      <FormGroup>
+      <Navbar.Form>
         <FormGroup>
-          <Navbar.Text>
-            <ControlLabel>From</ControlLabel>
-          </Navbar.Text>
-          <FormControl type="text" placeholder="block#" value={this.state.begin} onChange={changeHandler} />
+          <InputGroup>
+            <InputGroup.Addon>From</InputGroup.Addon>
+            <FormControl type="text" placeholder="block#" value={this.state.begin} onChange={changeHandler} />
+          </InputGroup>
         </FormGroup>
         <FormGroup>
           <Navbar.Text>to {this.state.end}</Navbar.Text>
         </FormGroup>
         <FormGroup>
-          <FormControl type="text" placeholder="showing" value={this.state.end-this.state.begin} onChange={changeNumShown} />
+          <InputGroup>
+            <InputGroup.Addon>Showing</InputGroup.Addon>
+            <FormControl type="text" placeholder="showing" value={this.state.end-this.state.begin} onChange={changeNumShown} />
+          </InputGroup>
         </FormGroup>
-      </FormGroup>
+      </Navbar.Form>
     )
   }
 

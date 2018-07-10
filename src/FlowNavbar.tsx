@@ -29,9 +29,7 @@ export default class FlowNavbar extends React.Component<IFlowBarProps, {}> {
           </Navbar.Brand>
         </Navbar.Header>
         <Nav pullRight={true}>
-          <Navbar.Form>
-            {this.props.begin && this.props.end && this.props.rangeChanged ? <Range rangeChanged={this.props.rangeChanged} begin={this.props.begin} end={this.props.end}/> : <Range />}
-          </Navbar.Form>
+          {this.props.begin && this.props.end && this.props.rangeChanged ? <Range rangeChanged={this.props.rangeChanged} begin={this.props.begin} end={this.props.end}/> : <Range />}
         </Nav>
        </Navbar>
      );
