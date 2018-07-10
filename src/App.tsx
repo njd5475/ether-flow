@@ -54,9 +54,6 @@ class App extends React.Component<IAppProps, IAppState> {
     transactions: [],
     url: App.defaulProviderUrl
   }
-  private fromBlock: HTMLInputElement | null
-  private toBlock: HTMLInputElement | null
-  private delayedChange: (e: React.SyntheticEvent) => void = _.debounce(this.rangeChanged, 500)
 
   public constructor(props: any) {
     super(props);
@@ -119,34 +116,22 @@ class App extends React.Component<IAppProps, IAppState> {
     return this.state.mainState === 'pending';
   }
 
-  public rangeChanged() {
-    if(this.fromBlock && this.toBlock) {
-      const newState = {
-        aggregator: this.createNewAggregator(this.state.url),
-        mainState: 'rangeChanged',
-        range: {begin: +this.fromBlock.value, end: +this.toBlock.value}
-      };
-      this.setState(newState, () => this.refreshBlock())
-    }
-  }
-
   public skip(amount: number) {
     const rng = this.state.range;
     this.setState({range: {begin: rng.begin+amount, end: rng.end+amount}},
       () => {
-        if(!this.toBlock || !this.fromBlock) {return;}
-        this.toBlock.value = this.state.range.end.toString();
-        this.fromBlock.value = this.state.range.begin.toString();
         this.refreshBlock();
       }
     );
   }
 
-  public beginChanged(begin: number) {
-    if(this.fromBlock) {
-      this.fromBlock.value = begin.toString()
-    }
-    this.setState({range: {begin, end: this.state.range.end}});
+  public rangeChanged(begin: number, end: number) {
+    const newState = {
+      aggregator: this.createNewAggregator(this.state.url),
+      mainState: 'rangeChanged',
+      range: {begin, end}
+    };
+    this.setState(newState, () => this.refreshBlock())
   }
 
   public render() {
@@ -164,23 +149,16 @@ class App extends React.Component<IAppProps, IAppState> {
       });
 
     const providerUrlHandler = this.providerChanged.bind(this);
-    const blockRangeHandler = this.delayedChange.bind(this);
-    const beginChangeHandler = this.beginChanged.bind(this);
+    const beginChangeHandler = this.rangeChanged.bind(this);
 
     return (
       <body>
-        <FlowNavbar isBusy={this.isBusy()} begin={this.state.range.begin} end={this.state.range.end} beginChanged={beginChangeHandler} />
+        <FlowNavbar isBusy={this.isBusy()} begin={this.state.range.begin} end={this.state.range.end} rangeChanged={beginChangeHandler} />
         <Grid>
           <Row className="App-intro">
             <label>Provider Url:
               <input key="providerUrl" onBlur={providerUrlHandler} type="text" defaultValue={this.state.url}/>
             </label>
-          </Row>
-          <Row className="App-intro">
-            <div>
-              <label>From Block#</label><input name='blockFrom' onChange={blockRangeHandler} ref={(el) => this.fromBlock = el} defaultValue={range.begin.toString()} />
-              <label>To</label><input name='blockTo' onChange={blockRangeHandler} ref={(el) => this.toBlock = el} defaultValue={range.end.toString()} />
-            </div>
           </Row>
           <Row>
             {rangeLinks}

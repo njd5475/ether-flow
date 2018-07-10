@@ -1,12 +1,10 @@
 import * as React from 'react';
-
 import { ControlLabel, FormControl, FormGroup, Navbar } from 'react-bootstrap';
 
 interface IRangeProps {
   begin?: number,
   end?: number,
-  beginChanged?: (b:number) => void,
-  endChanged?: (b:number) => void
+  rangeChanged?: (begin: number, end: number) => void
 }
 
 interface IRangeState {
@@ -34,16 +32,18 @@ export default class Range extends React.Component<IRangeProps, IRangeState> {
   }
 
   public changed(e: React.FormEvent<HTMLInputElement>) {
+    const difference = this.state.end - this.state.begin;
     const newNum = +e.currentTarget.value
-    this.setState({begin: newNum}, () => {
-      if(this.props.beginChanged) {
-        this.props.beginChanged(newNum);
+    this.setState({begin: newNum, end: newNum+difference}, () => {
+      if(this.props.rangeChanged) {
+        this.props.rangeChanged(newNum, newNum+difference);
       }
     });
   }
 
   public render() {
     const changeHandler = this.changed.bind(this);
+    const changeNumShown = this.changeShown.bind(this);
 
     return (
       <FormGroup>
@@ -51,14 +51,24 @@ export default class Range extends React.Component<IRangeProps, IRangeState> {
           <Navbar.Text>
             <ControlLabel>From</ControlLabel>
           </Navbar.Text>
-          <FormControl type="text" placeholder="block#, range(#-##)" value={this.state.begin} onChange={changeHandler} />
+          <FormControl type="text" placeholder="block#" value={this.state.begin} onChange={changeHandler} />
         </FormGroup>
         <FormGroup>
-          <Navbar.Text>
-            to {this.state.end}
-          </Navbar.Text>
+          <Navbar.Text>to {this.state.end}</Navbar.Text>
+        </FormGroup>
+        <FormGroup>
+          <FormControl type="text" placeholder="showing" value={this.state.end-this.state.begin} onChange={changeNumShown} />
         </FormGroup>
       </FormGroup>
     )
+  }
+
+  private changeShown(e: React.FormEvent<HTMLInputElement>) {
+    const range = Math.abs(+e.currentTarget.value);
+    this.setState({end: this.state.begin+range}, () => {
+      if(this.props.rangeChanged) {
+        this.props.rangeChanged(this.state.begin, this.state.end);
+      }
+    });
   }
 }

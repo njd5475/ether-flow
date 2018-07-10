@@ -8,7 +8,7 @@ interface IFlowBarProps {
   isBusy: boolean,
   begin?: number,
   end?: number,
-  beginChanged?: (begin: number) => void
+  rangeChanged?: (begin: number, end: number) => void
 }
 
 export default class FlowNavbar extends React.Component<IFlowBarProps, {}> {
@@ -30,7 +30,7 @@ export default class FlowNavbar extends React.Component<IFlowBarProps, {}> {
         </Navbar.Header>
         <Nav pullRight={true}>
           <Navbar.Form>
-            {this.props.begin && this.props.end && this.props.beginChanged ? <Range beginChanged={this.props.beginChanged} begin={this.props.begin} end={this.props.end}/> : <Range />}
+            {this.props.begin && this.props.end && this.props.rangeChanged ? <Range rangeChanged={this.props.rangeChanged} begin={this.props.begin} end={this.props.end}/> : <Range />}
           </Navbar.Form>
         </Nav>
        </Navbar>
