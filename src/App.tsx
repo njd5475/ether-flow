@@ -49,7 +49,7 @@ class App extends React.Component<IAppProps, IAppState> {
     blocks: [],
     index: 0,
     mainState: 'created',
-    range: {begin: 1, end: 50},
+    range: {begin: 0, end: 49},
     report: new SummaryReport(App.defaultAggregator),
     transactions: [],
     url: App.defaulProviderUrl

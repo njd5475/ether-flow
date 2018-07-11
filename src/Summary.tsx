@@ -26,8 +26,8 @@ export default class Summary extends React.Component<{total: BigNumber, aggregat
   }
 
   public render() {
-    const dollars = this.state.dollars.toString();
-    const ether = this.state.ether.toString() + "ETH";
+    const dollars = this.state.dollars.toFixed(2).toString();
+    const ether = this.state.ether.toString() + " ETH";
 
     return (
       <div><h3>Summary</h3>
