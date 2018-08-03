@@ -13,7 +13,11 @@ import BlockList     from './BlockList';
 import SummaryReport from './ether/summaryReport';
 import FlowNavbar    from './FlowNavbar';
 import Summary       from './Summary';
+import configStore   from './store/configurer';
+import { render }    from 'react-dom';
 import TransferList  from './TransferList';
+
+const store = configStore();
 
 interface IAppProps {
     providerUrl?: string
@@ -147,8 +151,8 @@ class App extends React.Component<IAppProps, IAppState> {
     const providerUrlHandler = this.providerChanged.bind(this);
     const beginChangeHandler = this.rangeChanged.bind(this);
 
-    return (
-      <body>
+    return render(
+      <Provider store={store}>
         <FlowNavbar isBusy={this.isBusy()} begin={this.state.range.begin} end={this.state.range.end} rangeChanged={beginChangeHandler} />
         <Grid>
           <Row className="App-intro">
@@ -183,7 +187,8 @@ class App extends React.Component<IAppProps, IAppState> {
             </Tabs>
           </Row>
         </Grid>
-      </body>
+      </Provider>,
+      document.getElementsByTagName('body')[0]
     );
   }
 

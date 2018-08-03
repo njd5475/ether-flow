@@ -19,7 +19,7 @@ export default class Aggregator {
     blockP.then((b) => this.latest = +b.number)
   }
 
-  public totalEther(begin: number, end: number, callback: (b: any) => void ): Promise<Eth.Block[]> {
+  public async totalEther(begin: number, end: number, callback: (b: any) => void ): Promise<Eth.Block[]> {
     const promise = new Promise<Eth.Block[]>((resolve, reject) => {
       this.nextBlock(begin, end, [], resolve, callback);
     });
@@ -44,18 +44,14 @@ export default class Aggregator {
     }
   }
 
-  public toDollars(wei: string): Promise<number> {
-    return new Promise<number>((resolve, reject) => {
-      this.toEther(wei).then((ether) => {
-        this.price.get().then((price) => resolve(price * ether));
-      })
-    })
+  public async toDollars(wei: string): Promise<number> {
+    const eth = await this.toEther(wei)
+    const price = await this.price.get()
+    return price * eth
   }
 
-  public toEther(wei: string): Promise<number> {
-    return new Promise<number>(
-      (resolve, reject) => resolve(+this.w3.utils.fromWei(wei, "ether"))
-    );
+  public async toEther(wei: string): Promise<number> {
+    return +this.w3.utils.fromWei(wei, "ether");
   }
 
   public stop() {
