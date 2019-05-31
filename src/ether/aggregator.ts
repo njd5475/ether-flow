@@ -1,5 +1,5 @@
-import Web3 from 'web3'
-import * as Eth from 'web3/eth/types';
+import Web3 from 'web3';
+import Eth from 'web3-eth/types';
 import PriceLookup from './priceLookup';
 
 export default class Aggregator {
@@ -70,7 +70,10 @@ export default class Aggregator {
     return this.w3.eth.getTransaction(hsh);
   }
 
-  public isContract(hsh: string) {
+  public isContract(hsh: string | null): Promise<string | null> {
+    if(hsh === null || hsh === undefined) {
+      return Promise.resolve(null);
+    }
     return this.w3.eth.getCode(hsh);
   }
 }

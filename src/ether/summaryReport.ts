@@ -1,8 +1,8 @@
 
-import BigNumber from 'bn.js'
-import * as W3 from 'web3/eth/types'
-import Aggregator from './aggregator'
-import * as T from './types'
+import BigNumber from 'bn.js';
+import { Transaction } from 'web3-core/types';
+import Aggregator from './aggregator';
+import * as T from './types';
 
 export default class SummaryReport {
   public contractAddresses: object = {}
@@ -17,13 +17,19 @@ export default class SummaryReport {
     this.aggregator = aggregator;
   }
 
-  public addTransaction(t: W3.Transaction): Promise<SummaryReport> {
+  public addTransaction(t: Transaction): Promise<SummaryReport> {
+    if(t.to === null) {
+      throw new Error('Transaction invalid');
+    }
     return new Promise<SummaryReport>((resolve, reject) => {
       this.totalEther = this.totalEther.add(new BigNumber(t.value));
       this.checkAndAddContractAddress(t, resolve, reject);
       this.addSender(t.from, t);
       this.addReceiver(t.to, t);
       this.allAddresses[t.from] = {};
+      if(t.to === null) {
+        return;
+      }
       this.allAddresses[t.to] = {};
     })
   }
@@ -32,7 +38,7 @@ export default class SummaryReport {
     return 100.0 * (Object.keys(this.contractAddresses).length / Object.keys(this.allAddresses).length);
   }
 
-  private addSender(from: string, t: W3.Transaction) {
+  private addSender(from: string, t: Transaction) {
     const sent = this.sentAddresses[from] || {};
     sent.amount = sent.amount ? sent.amount.add(new BigNumber(t.value)) : new BigNumber(t.value);
     sent.transactionCount = sent.transactionCount ? sent.transactionCount + 1 : 1;
@@ -42,7 +48,10 @@ export default class SummaryReport {
     this.sentAddresses[from] = sent;
   }
 
-  private addReceiver(to: string, t: W3.Transaction) {
+  private addReceiver(to: string | null, t: Transaction) {
+    if(to === null) {
+      return;
+    }
     const received = this.receivedAddresses[to] || {};
     received.amount = received.amount ? received.amount.add(new BigNumber(t.value)) : new BigNumber(t.value);
     received.transactionCount = received.transactionCount ? received.transactionCount + 1 : 1;
@@ -52,7 +61,7 @@ export default class SummaryReport {
     this.receivedAddresses[to] = received;
   }
 
-  private checkAndAddContractAddress(t: W3.Transaction, resolve: (s: SummaryReport) => void, reject: () => void) {
+  private checkAndAddContractAddress(t: Transaction, resolve: (s: SummaryReport) => void, reject: () => void) {
     this.aggregator.isContract(t.to).then((c) => {
       if(!("0x0" === c || "0x" === c)) {
         this.addContractAddress(t.to);
@@ -67,7 +76,10 @@ export default class SummaryReport {
 
   }
 
-  private addContractAddress(hsh: string) {
+  private addContractAddress(hsh: string | null) {
+    if(hsh === null) {
+      return;
+    }
     const addr = this.contractAddresses[hsh] = this.contractAddresses[hsh] || {};
     addr.contractCount = addr.contractCount ? addr.contractCount + 1 : 0;
   }
