@@ -1,8 +1,7 @@
 
-import BigNumber from 'bn.js';
-import { Transaction } from 'web3-core/types';
 import Aggregator from './aggregator';
-import * as T from './types';
+import * as T from '.';
+import { BigNumber, Transaction } from 'ethers/utils';
 
 export default class SummaryReport {
   public contractAddresses: object = {}
@@ -17,67 +16,90 @@ export default class SummaryReport {
     this.aggregator = aggregator;
   }
 
-  public addTransaction(t: Transaction): Promise<SummaryReport> {
-    if(t.to === null) {
+  public async addTransaction(t: Transaction): Promise<SummaryReport> {
+    if(t.to === null || t.to === undefined || t.from === null || t.from === undefined) {
       throw new Error('Transaction invalid');
     }
-    return new Promise<SummaryReport>((resolve, reject) => {
-      this.totalEther = this.totalEther.add(new BigNumber(t.value));
-      this.checkAndAddContractAddress(t, resolve, reject);
-      this.addSender(t.from, t);
-      this.addReceiver(t.to, t);
-      this.allAddresses[t.from] = {};
-      if(t.to === null) {
-        return;
-      }
-      this.allAddresses[t.to] = {};
-    })
+    this.totalEther = this.totalEther.add(new BigNumber(t.value));
+    
+    await this.addSender(t.from, t);
+    await this.addReceiver(t.to, t);
+    this.allAddresses[t.from] = {};
+    this.allAddresses[t.to] = {};
+
+    return await this.checkAndAddContractAddress(t);
   }
 
   public getContractPercentage(): number {
     return 100.0 * (Object.keys(this.contractAddresses).length / Object.keys(this.allAddresses).length);
   }
 
-  private addSender(from: string, t: Transaction) {
+  private async addSender(from: string | undefined, t: Transaction) {
+    if(from === undefined) {
+      return;
+    }
     const sent = this.sentAddresses[from] || {};
+  
     sent.amount = sent.amount ? sent.amount.add(new BigNumber(t.value)) : new BigNumber(t.value);
     sent.transactionCount = sent.transactionCount ? sent.transactionCount + 1 : 1;
     sent.isContractAddress = sent.isContractAddress || this.contractAddresses[from] || false;
-    this.aggregator.toEther(sent.amount.toString()).then((e) => sent.displayAmountEther = e.toFixed(18).toString());
-    this.aggregator.toDollars(sent.amount.toString()).then((e) => sent.displayAmountDollars = e.toFixed(2).toString());
+  
+    const ether = this.aggregator.toEther(sent.amount.toString()); 
+    sent.displayAmountEther = ether.toFixed(18).toString();
+    if(ether <= 0) {
+      sent.displayAmountEther = '';
+    }
+
+    const dollars = await this.aggregator.toDollars(sent.amount.toString());
+
+    sent.displayAmountDollars = dollars.toFixed(2).toString();
+    if(dollars <= 0) {
+      sent.displayAmountDollars = '';
+    }
+
     this.sentAddresses[from] = sent;
   }
 
-  private addReceiver(to: string | null, t: Transaction) {
+  private async addReceiver(to: string | null, t: Transaction) {
     if(to === null) {
       return;
     }
     const received = this.receivedAddresses[to] || {};
+    
     received.amount = received.amount ? received.amount.add(new BigNumber(t.value)) : new BigNumber(t.value);
     received.transactionCount = received.transactionCount ? received.transactionCount + 1 : 1;
     received.isContractAddress = received.isContractAddress || this.contractAddresses[to] || false;
-    this.aggregator.toEther(received.amount.toString()).then((e) => received.displayAmountEther = e.toFixed(18).toString());
-    this.aggregator.toDollars(received.amount.toString()).then((e) => received.displayAmountDollars = e.toFixed(2).toString());
+    
+    const ether = this.aggregator.toEther(received.amount.toString());
+    received.displayAmountEther = ether.toFixed(18).toString();
+    if(ether <= 0) {
+      received.displayAmountEther = '';
+    }
+
+    const dollars = await this.aggregator.toDollars(received.amount.toString());
+    received.displayAmountDollars = dollars.toFixed(2).toString();
+    if(dollars <= 0) {
+      received.displayAmountDollars = '';
+    }
+
     this.receivedAddresses[to] = received;
   }
 
-  private checkAndAddContractAddress(t: Transaction, resolve: (s: SummaryReport) => void, reject: () => void) {
-    this.aggregator.isContract(t.to).then((c) => {
-      if(!("0x0" === c || "0x" === c)) {
-        this.addContractAddress(t.to);
-      }
-      this.aggregator.isContract(t.from).then((ct) => {
-        if(!("0x0" === ct || "0x" === ct)) {
-          this.addContractAddress(t.from)
-        }
-        resolve(this);
-      })
-    })
-
+  private async checkAndAddContractAddress(t: Transaction) : Promise<SummaryReport> {
+    const c = await this.aggregator.isContract(t.to);
+    
+    if(!("0x0" === c || "0x" === c)) {
+      this.addContractAddress(t.to);
+    }
+    const ct = await this.aggregator.isContract(t.from);
+    if(!("0x0" === ct || "0x" === ct)) {
+      this.addContractAddress(t.from)
+    }
+    return this;
   }
 
-  private addContractAddress(hsh: string | null) {
-    if(hsh === null) {
+  private addContractAddress(hsh: string | null | undefined) {
+    if(hsh === null || hsh === undefined) {
       return;
     }
     const addr = this.contractAddresses[hsh] = this.contractAddresses[hsh] || {};

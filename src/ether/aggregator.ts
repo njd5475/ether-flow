@@ -1,80 +1,52 @@
-import Web3 from 'web3';
-import Eth from 'web3-eth/types';
 import PriceLookup from './priceLookup';
+import { JsonRpcProvider } from 'ethers/providers';
+import { Block } from 'src/ether-flow';
+import { formatEther } from 'ethers/utils';
 
 export default class Aggregator {
-  public provider: string;
-  private w3: Web3;
-  private latest: number;
-  private runnable: boolean;
+  private provider: JsonRpcProvider;
   private price: PriceLookup;
 
   constructor(url: string) {
-    this.w3 = new Web3(Web3.givenProvider || new Web3.providers.HttpProvider(url));
-    this.provider = this.w3.currentProvider.constructor.name;
-    this.latest = 1;
-    this.runnable = true;
+    this.provider = new JsonRpcProvider(url);
     this.price = new PriceLookup();
-    const blockP = this.w3.eth.getBlock('latest')
-    blockP.then((b) => this.latest = +b.number)
   }
 
-  public totalEther(begin: number, end: number, callback: (b: any) => void ): Promise<Eth.Block[]> {
-    const promise = new Promise<Eth.Block[]>((resolve, reject) => {
-      this.nextBlock(begin, end, [], resolve, callback);
-    });
+  public async totalEther(begin: number, end: number): Promise<Block[]> {
+    const blocks = [];
+    for(let b = begin; b !== end; ++b) {
+      const block = await this.provider.getBlock(b);
+      blocks.push(block);
+    };
 
-    return promise;
+    return blocks;
   }
 
-  public nextBlock(begin: number, end: number, blocks: Eth.Block[], resolve: ([]) => void, callback: (b: any) => void) {
-    if(this.runnable && begin <= end) {
-      this.w3.eth.getBlock(begin).then((blk) => {
-        blocks.push(blk);
-        callback(begin);
-        if(this.runnable && begin <= end) {
-          this.nextBlock(begin+1, end, blocks, resolve, callback);
-        }else{
-          this.stop();
-          resolve(blocks);
-        }
-      });
-    }else{
-      resolve(blocks);
-    }
+  public async toDollars(wei: string): Promise<number> {
+    const ether = this.toEther(wei);
+    
+    const price = await this.price.get();
+    
+    return price * ether;
   }
 
-  public toDollars(wei: string): Promise<number> {
-    return new Promise<number>((resolve, reject) => {
-      this.toEther(wei).then((ether) => {
-        this.price.get().then((price) => resolve(price * ether));
-      })
-    })
+  public toEther(wei: string): number {
+    return +formatEther(wei);
   }
 
-  public toEther(wei: string): Promise<number> {
-    return new Promise<number>(
-      (resolve, reject) => resolve(+this.w3.utils.fromWei(wei, "ether"))
-    );
+  public async getLatestBlockNumber(): Promise<number> {
+    return await this.provider.getBlockNumber();
   }
 
-  public stop() {
-    this.runnable = false
+  public async getTrans(hsh: any) {
+    return this.provider.getTransaction(hsh);
   }
 
-  public getLatestBlock(): number {
-    return this.latest;
-  }
-
-  public getTrans(hsh: any) {
-    return this.w3.eth.getTransaction(hsh);
-  }
-
-  public isContract(hsh: string | null): Promise<string | null> {
+  public async isContract(hsh: string | null | undefined): Promise<string | null> {
     if(hsh === null || hsh === undefined) {
-      return Promise.resolve(null);
+      return null;
     }
-    return this.w3.eth.getCode(hsh);
+    return await this.provider.getCode(hsh);
   }
 }
 

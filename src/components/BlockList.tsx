@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Table } from 'react-bootstrap';
 import _ from 'underscore';
-import * as W3 from 'web3/eth/types';
 import BlockSummary from './BlockSummary';
+import { Block } from '../ether-flow';
 
-export default class BlockList extends React.Component<{blocks: W3.Block[]}, {}> {
+export default class BlockList extends React.Component<{blocks: Block[]}, {}> {
 
   public render() {
     return (
@@ -18,7 +18,10 @@ export default class BlockList extends React.Component<{blocks: W3.Block[]}, {}>
           </tr>
         </thead>
         <tbody>
-          {_.collect(this.props.blocks, (b) => <BlockSummary key={b.number} {...b} />)}
+          {_.collect(this.props.blocks, (b) => {
+            const blockNumber = b.number || 0;
+            return <BlockSummary key={blockNumber} {...b} />
+          })}
         </tbody>
       </Table>
     )

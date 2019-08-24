@@ -1,19 +1,20 @@
 import * as React from 'react';
-import './App.css';
+import './styles/App.css';
 
 import { Col, Grid, Row, Tab, Tabs } from 'react-bootstrap';
 
 import { Aggregator } from './ether/aggregator';
 
-
 import * as _ from 'underscore';
-import * as W3 from 'web3/eth/types';
 
-import BlockList     from './BlockList';
+import BlockList     from './components/BlockList';
 import SummaryReport from './ether/summaryReport';
-import FlowNavbar    from './FlowNavbar';
-import Summary       from './Summary';
-import TransferList  from './TransferList';
+import FlowNavbar    from './components/FlowNavbar';
+import Summary       from './components/Summary';
+import TransferList  from './components/TransferList';
+
+import { Block } from './ether-flow';
+
 
 interface IAppProps {
     providerUrl?: string
@@ -27,7 +28,7 @@ interface IRange {
 interface IAppState {
   aggregator: Aggregator,
   aggregators: Aggregator[],
-  blocks: W3.Block[],
+  blocks: Block[],
   index: number,
   mainState: string,
   range: IRange,
@@ -66,6 +67,12 @@ class App extends React.Component<IAppProps, IAppState> {
   }
 
   public componentDidMount() {
+    this.setRangeToLatest();
+  }
+
+  public async setRangeToLatest() {
+    const latestBlock = await this.state.aggregator.getLatestBlockNumber();
+    this.rangeChanged(latestBlock - 1, latestBlock);
     this.refreshBlock();
   }
 
@@ -73,42 +80,51 @@ class App extends React.Component<IAppProps, IAppState> {
     const target = e.currentTarget as HTMLInputElement
     localStorage.setItem("saved-provider", target.value.toString());
     const newAggregator = this.createNewAggregator(target.value);
+    console.log("Provider changed");
     this.setState({url: target.value, aggregator: newAggregator}, () => this.refreshBlock());
   }
 
-  public refreshBlock() {
-    this.setState({mainState: 'pending'}, () => {
-      if (this.state === null || this.state.aggregator === null) { return; }
+  public async refreshBlock() {
+    if(this.state.mainState !== 'pending') {
+      this.setState({mainState: 'pending'}, async () => {
+        if (this.state === null || this.state.aggregator === null) { return; }
 
-      this.state.aggregator.totalEther(this.state.range.begin, this.state.range.end, (b) => {this.setState({index: b})})
-        .then((blks: W3.Block[]) => {
+        try {
+          const blocks = await this.state.aggregator.totalEther(this.state.range.begin, this.state.range.end);
+            
           if (this.state === null || this.state.aggregator === null) { return; }
 
-          const allTrans = _.collect(blks, (c) => c.transactions);
-          const trans = _.flatten(allTrans);
+          const allTrans = _.collect(blocks, (blk) => blk.transactions);
+          const transactions = _.flatten(allTrans);
 
-          this.setState({blocks: blks, transactions: trans, mainState: 'loaded'}, () => this.refreshSummary());
-        }).catch((err: any) => {
-          this.setState({mainState: 'error ' + err});
-        });
-    });
+          this.setState({blocks, transactions, mainState: 'loaded'}, () => this.refreshSummary());
+        }catch(e) {
+          this.setState({mainState: 'error ' + e});
+        };
+      });
+    }else{
+      this.setState({mainState: 'error you cannot make multiple request simultaneously'});
+    }
   }
 
-  public refreshSummary() {
-    this.setState({mainState: 'pending'}, () => {
-      if(this.state.transactions.length > 0) {
-        _.collect(this.state.transactions, (t) => {
-          this.state.aggregator.getTrans(t).then((tr) => {
-            this.state.report.addTransaction(tr).then((report) => {
-              this.setState({report, mainState: 'loaded'});
-            })
-          }).catch(() => {
-            this.setState({mainState: 'failed'});
-          });
-        });
-      }else{
+  public async refreshSummary() {
+    this.setState({mainState: 'pending'}, async () => {
+      if(this.state.transactions.length <= 0) {
         this.setState({mainState: 'no transactions'});
+        return;
       }
+
+      const pendingTransactions = _.collect(this.state.transactions, async (t) => {
+        try {
+          const transaction = await this.state.aggregator.getTrans(t);
+          const report = await this.state.report.addTransaction(transaction);
+          this.setState({report, mainState: 'loaded'});
+        }catch(e) {
+          this.setState({mainState: 'failed'});
+        };
+      });
+
+      await Promise.all(pendingTransactions);
     });
   }
 
@@ -117,8 +133,8 @@ class App extends React.Component<IAppProps, IAppState> {
   }
 
   public skip(amount: number) {
-    const rng = this.state.range;
-    this.rangeChanged(rng.begin+amount, rng.end+amount);
+    const { begin, end } = this.state.range;
+    this.rangeChanged(begin+amount, end+amount);
   }
 
   public rangeChanged(begin: number, end: number) {
@@ -131,8 +147,7 @@ class App extends React.Component<IAppProps, IAppState> {
   }
 
   public render() {
-    const range = this.state.range;
-    const index = this.state.index;
+    const { begin, end } = this.state.range;
     const blocks = this.state.blocks;
     const aggregator = this.state.aggregator;
     const transactions =  this.state.transactions.length;
@@ -148,8 +163,8 @@ class App extends React.Component<IAppProps, IAppState> {
     const beginChangeHandler = this.rangeChanged.bind(this);
 
     return (
-      <body>
-        <FlowNavbar isBusy={this.isBusy()} begin={this.state.range.begin} end={this.state.range.end} rangeChanged={beginChangeHandler} />
+      <div>
+        <FlowNavbar isBusy={this.isBusy()} begin={begin} end={end} rangeChanged={beginChangeHandler} />
         <Grid>
           <Row className="App-intro">
             <label>Provider Url:
@@ -161,19 +176,19 @@ class App extends React.Component<IAppProps, IAppState> {
           </Row>
           <Row className="pull-right">
             <Col md={12}>
-              Loading {index} of {range.end} ({Math.floor(((index-range.begin) / (range.end-range.begin)) * 100)}%) ({transactions} transactions) ({this.state.mainState})
+              Loading {begin} of {end} ({Math.floor(((end-begin) / (end-begin)) * 100)}%) ({transactions} transactions) ({this.state.mainState})
             </Col>
           </Row>
           <Row>
-            <Tabs>
+            <Tabs id="Main">
               <Tab eventKey={1} title="Blocks">
                 <BlockList blocks={blocks} />
               </Tab>
               <Tab eventKey={2} title={`Senders (${Object.keys(this.state.report.sentAddresses).length})`}>
-                <TransferList transfers={this.state.report.sentAddresses} />
+                <TransferList name="senders" transfers={this.state.report.sentAddresses} />
               </Tab>
               <Tab eventKey={3} title={`Receivers (${Object.keys(this.state.report.receivedAddresses).length})`}>
-                <TransferList transfers={this.state.report.receivedAddresses} />
+                <TransferList name="receivers" transfers={this.state.report.receivedAddresses} />
               </Tab>
               <Tab eventKey={4} title="Transaction Summary">
                 <Row>
@@ -183,12 +198,11 @@ class App extends React.Component<IAppProps, IAppState> {
             </Tabs>
           </Row>
         </Grid>
-      </body>
+      </div>
     );
   }
 
   private createNewAggregator(url: string): Aggregator {
-    this.state.aggregator.stop();
     const newAggregator = new Aggregator(url);
     this.setState({report: new SummaryReport(newAggregator), url});
     return newAggregator;

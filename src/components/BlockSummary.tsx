@@ -1,7 +1,7 @@
 import React from         'react';
-import * as W3 from       'web3/eth/types';
+import { Block } from '../ether-flow';
 
-export default class BlockSummary extends React.Component<W3.Block, {}> {
+export default class BlockSummary extends React.Component<Block, {}> {
 
   public render() {
     return (
@@ -9,7 +9,6 @@ export default class BlockSummary extends React.Component<W3.Block, {}> {
         <td>{this.props.hash}</td>
         <td>{this.props.number}</td>
         <td>{this.props.transactions.length}</td>
-        <td>{this.props.uncles.length}</td>
       </tr>
     )
   }

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Nav, Navbar } from 'react-bootstrap';
-import './FlowNavbar.css';
-import logo from './logo.svg';
+import '../styles/FlowNavbar.css';
+import logo from '../styles/logo.svg';
 import Range      from './Range';
 
 interface IFlowBarProps {

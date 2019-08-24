@@ -3,41 +3,26 @@ export default class PriceLookup {
   private static ticker : string = "https://min-api.cryptocompare.com/data/price"
   private static refreshDelay : number = 1 * 60 * 1000; //
 
-  private price: number | null;
-  private nextCache: number | null;
+  private price: Promise<number>;
 
-  public get(): Promise<number> {
-    return this.priceCache();
+  public constructor() {
+    this.price = PriceLookup.fetchTickerPrice();
+    setTimeout(this.refresh, PriceLookup.refreshDelay);
   }
 
-  private priceCache(): Promise<number> {
-    return new Promise<number>((resolve, reject) => {
-      if(!this.nextCache) {this.nextCache = -1}
-      if(!this.price || (new Date()).getTime() > this.nextCache) {
-        this.fetchTickerPrice().then((price) => {
-          this.nextCache = (new Date()).getTime() + PriceLookup.refreshDelay;
-          this.price = price;
-          resolve(this.price);
-        })
-      }else{
-        resolve(this.price);
-      }
-    })
+  public async get(): Promise<number> {
+    return await this.price;
+  }
+  
+  private refresh() {
+    this.price = PriceLookup.fetchTickerPrice();
   }
 
-  private fetchTickerPrice() {
-    return new Promise<number>(
-      (resolve, reject) => {
-        fetch(`${PriceLookup.ticker}?fsym=ETH&tsyms=USD`)
-          .then((response) => response.json())
-          .then((tickerObj) => {
-              if(tickerObj.USD) {
-                resolve(+tickerObj.USD);
-              }else{
-                reject("Improper body response " + JSON.stringify(tickerObj));
-              }
-          });
-    });
-  }
+  private static async fetchTickerPrice(): Promise<number> {
+    const response = await fetch(`${PriceLookup.ticker}?fsym=ETH&tsyms=USD`);
+    const json: any = await response.json();
 
+    return json.USD;
+  }
+  
 }

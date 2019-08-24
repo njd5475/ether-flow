@@ -1,4 +1,4 @@
-import BigNumber from 'bn.js';
+import { BigNumber } from '../ether-flow';
 
 export interface ITransfer {
   address: string,

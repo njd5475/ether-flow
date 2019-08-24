@@ -1,27 +1,26 @@
-import BigNumber from     'bn.js';
 import React from         'react';
-import * as W3 from       'web3/eth/types';
-import Aggregator from    './ether/aggregator';
-import SummaryReport from './ether/summaryReport';
+import Aggregator from    '../ether/aggregator';
+import SummaryReport from '../ether/summaryReport';
+
+import { Block, BigNumber } from 'src/ether-flow';
 
 interface ISummaryState {
   dollars: number,
   ether: number
 }
 
-export default class Summary extends React.Component<{total: BigNumber, aggregator: Aggregator, report: SummaryReport, blocks: W3.Block[]}, ISummaryState> {
+export default class Summary extends React.Component<{total: BigNumber, aggregator: Aggregator, report: SummaryReport, blocks: Block[]}, ISummaryState> {
   public state = {
     dollars: 0,
     ether: 0
   }
 
-  public componentWillReceiveProps(nextProps: any) {
+  public async componentWillReceiveProps(nextProps: any) {
     if(nextProps.total !== this.props.total) {
-      this.props.aggregator.toDollars(nextProps.total.toString()).then((d) => {
-        this.props.aggregator.toEther(nextProps.total.toString()).then((e) => {
-          this.setState({dollars: d, ether: e});
-        });
-      })
+      const ether = this.props.aggregator.toEther(nextProps.total.toString());
+      const dollars = await this.props.aggregator.toDollars(nextProps.total.toString());
+      
+      this.setState({dollars, ether});
     }
   }
 
