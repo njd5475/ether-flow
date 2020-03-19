@@ -5,12 +5,11 @@
   "homepage": "https://njd5475.github.io/ether-flow/",
   "dependencies": {
     "bootstrap": "^3.3.7",
-    "ethers": "^4.0.36",
-    "react": "^16.8.6",
+    "ethers": "^4.0.46",
+    "react": "^16.13.0",
     "react-bootstrap": "^0.32.4",
-    "react-dom": "^16.8.6",
-    "react-scripts-ts": "^4.0.8",
-    "underscore": "^1.9.1"
+    "react-dom": "^16.13.0",
+    "underscore": "^1.9.2"
   },
   "scripts": {
     "start": "react-scripts-ts start",
@@ -22,13 +21,13 @@
   },
   "devDependencies": {
     "@types/jest": "^23.3.14",
-    "@types/node": "^10.14.8",
-    "@types/react": "^16.8.19",
-    "@types/react-bootstrap": "^0.32.17",
-    "@types/react-dom": "^16.8.4",
-    "@types/underscore": "^1.8.18",
-    "gh-pages": "^2.0.1",
-    "typescript": "^3.5.1"
+    "@types/node": "^10.17.17",
+    "@types/react": "^16.9.23",
+    "@types/react-bootstrap": "^0.32.20",
+    "@types/react-dom": "^16.9.5",
+    "@types/underscore": "^1.9.4",
+    "gh-pages": "^2.2.0",
+    "typescript": "^3.8.3"
   },
   "browserslist": [
     ">0.2%",
