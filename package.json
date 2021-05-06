@@ -10,7 +10,7 @@
     "react-bootstrap": "^0.32.4",
     "react-dom": "^16.14.0",
     "react-scripts-ts": "^4.0.8",
-    "underscore": "^1.12.0"
+    "underscore": "^1.12.1"
   },
   "scripts": {
     "start": "react-scripts-ts start",
